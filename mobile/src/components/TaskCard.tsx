@@ -10,19 +10,6 @@ type Props = {
   onPress?: () => void;
   onToggleStatus?: (next: TodoStatus) => void;
   onDelete?: () => void;
-  compact?: boolean;
-};
-
-const formatDue = (iso?: string | null) => {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
 };
 
 const statusLabel: Record<TodoStatus, string> = {
@@ -34,162 +21,245 @@ const statusLabel: Record<TodoStatus, string> = {
 const nextStatus = (s: TodoStatus): TodoStatus =>
   s === 'pending' ? 'in_progress' : s === 'in_progress' ? 'completed' : 'pending';
 
-const TaskCard: React.FC<Props> = ({
-  todo,
-  onPress,
-  onToggleStatus,
-  onDelete,
-  compact = false,
-}) => {
+const isSameDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate();
+
+const formatDue = (iso?: string | null): string | null => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const now = new Date();
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+  if (isSameDay(d, now)) return `Today, ${time}`;
+
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (isSameDay(d, tomorrow)) return `Tomorrow, ${time}`;
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (isSameDay(d, yesterday)) return `Yesterday, ${time}`;
+
+  const dayDiff = Math.round((d.getTime() - now.getTime()) / 86_400_000);
+  if (dayDiff > 1 && dayDiff < 7) {
+    const dayName = d.toLocaleDateString(undefined, { weekday: 'short' });
+    return `${dayName}, ${time}`;
+  }
+  return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
+};
+
+/* Status indicator: three visually distinct states.
+ *   pending      → empty ring
+ *   in_progress  → ring with a centered dot (clearly "started")
+ *   completed    → filled circle with ✓ */
+const StatusIndicator: React.FC<{
+  status: TodoStatus;
+  color: string;
+  primaryText: string;
+  onPress: () => void;
+}> = ({ status, color, primaryText, onPress }) => (
+  <Pressable
+    onPress={onPress}
+    hitSlop={10}
+    style={[
+      styles.indicator,
+      {
+        borderColor: color,
+        backgroundColor: status === 'completed' ? color : 'transparent',
+      },
+    ]}
+  >
+    {status === 'in_progress' && (
+      <View style={[styles.indicatorDot, { backgroundColor: color }]} />
+    )}
+    {status === 'completed' && (
+      <Text style={{ color: primaryText, fontSize: 13, fontWeight: '800' }}>✓</Text>
+    )}
+  </Pressable>
+);
+
+const TaskCard: React.FC<Props> = ({ todo, onPress, onToggleStatus, onDelete }) => {
   const { colors } = useTheme();
   const due = formatDue(todo.due_date);
   const overdue =
     !!todo.due_date &&
     new Date(todo.due_date).getTime() < Date.now() &&
     todo.status !== 'completed';
+  const pColor = priorityColor(todo.priority, colors);
+  const sColor = statusColor(todo.status, colors);
+  const completed = todo.status === 'completed';
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        compact && styles.cardCompact,
         {
           backgroundColor: colors.surface,
           borderColor: colors.border,
-          opacity: pressed && onPress ? 0.85 : 1,
+          opacity: pressed && onPress ? 0.9 : 1,
         },
       ]}
     >
-      <View style={styles.row}>
+      <View style={[styles.priorityStripe, { backgroundColor: pColor }]} />
+
+      <View style={styles.body}>
         {onToggleStatus && (
-          <Pressable
+          <StatusIndicator
+            status={todo.status}
+            color={sColor}
+            primaryText={colors.primaryText}
             onPress={() => onToggleStatus(nextStatus(todo.status))}
-            hitSlop={8}
-            style={[
-              styles.checkbox,
-              {
-                borderColor: statusColor(todo.status, colors),
-                backgroundColor:
-                  todo.status === 'completed' ? statusColor(todo.status, colors) : 'transparent',
-              },
-            ]}
-          >
-            {todo.status === 'completed' && (
-              <Text style={{ color: colors.primaryText, fontWeight: '700' }}>✓</Text>
-            )}
-          </Pressable>
+          />
         )}
 
         <View style={{ flex: 1 }}>
-          <Text
-            style={[
-              styles.title,
-              {
-                color: colors.text,
-                textDecorationLine: todo.status === 'completed' ? 'line-through' : 'none',
-              },
-            ]}
-            numberOfLines={2}
-          >
-            {todo.title}
-          </Text>
-          {!compact && !!todo.description && (
-            <Text style={[styles.desc, { color: colors.textMuted }]} numberOfLines={2}>
+          <View style={styles.titleRow}>
+            <Text
+              style={[
+                styles.title,
+                {
+                  color: completed ? colors.textMuted : colors.text,
+                  textDecorationLine: completed ? 'line-through' : 'none',
+                },
+              ]}
+              numberOfLines={2}
+            >
+              {todo.title}
+            </Text>
+            {onDelete && (
+              <Pressable onPress={onDelete} hitSlop={10} style={styles.deleteBtn}>
+                <Text style={{ color: colors.textMuted, fontSize: 18 }}>×</Text>
+              </Pressable>
+            )}
+          </View>
+
+          {!!todo.description && !completed && (
+            <Text
+              style={[styles.desc, { color: colors.textMuted }]}
+              numberOfLines={2}
+            >
               {todo.description}
             </Text>
           )}
 
           <View style={styles.meta}>
-            <Badge
-              text={todo.priority.toUpperCase()}
-              color={priorityColor(todo.priority, colors)}
-            />
-            {!compact && (
-              <Badge
-                text={statusLabel[todo.status]}
-                color={statusColor(todo.status, colors)}
-              />
-            )}
+            <View style={styles.statusGroup}>
+              <View style={[styles.statusDot, { backgroundColor: sColor }]} />
+              <Text style={[styles.statusText, { color: sColor }]}>
+                {statusLabel[todo.status]}
+              </Text>
+            </View>
+
+            <Text style={[styles.priorityLabel, { color: pColor }]}>
+              {todo.priority.toUpperCase()}
+            </Text>
+
             {due && (
               <Text
-                style={{
-                  fontSize: 12,
-                  color: overdue ? colors.danger : colors.textMuted,
-                  fontWeight: overdue ? '600' : '400',
-                }}
+                style={[
+                  styles.dueText,
+                  {
+                    color: overdue ? colors.danger : colors.textMuted,
+                    fontWeight: overdue ? '700' : '500',
+                  },
+                ]}
               >
-                {overdue ? 'Overdue · ' : 'Due '}
+                {overdue ? 'Overdue · ' : ''}
                 {due}
               </Text>
             )}
           </View>
         </View>
-
-        {onDelete && (
-          <Pressable onPress={onDelete} hitSlop={10} style={styles.delete}>
-            <Text style={{ color: colors.danger, fontSize: 18 }}>×</Text>
-          </Pressable>
-        )}
       </View>
     </Pressable>
   );
 };
 
-const Badge: React.FC<{ text: string; color: string }> = ({ text, color }) => (
-  <View style={[styles.badge, { backgroundColor: color + '22', borderColor: color }]}>
-    <Text style={{ color, fontSize: 11, fontWeight: '600' }}>{text}</Text>
-  </View>
-);
-
 const styles = StyleSheet.create({
   card: {
+    flexDirection: 'row',
     borderWidth: 1,
     borderRadius: 14,
-    padding: 14,
     marginBottom: 10,
+    overflow: 'hidden',
   },
-  cardCompact: {
-    padding: 12,
+  priorityStripe: {
+    width: 4,
   },
-  row: {
+  body: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-start',
+    padding: 14,
     gap: 12,
   },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+  indicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
   },
+  indicatorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
   title: {
-    fontSize: 15,
+    flex: 1,
+    fontSize: 16,
     fontWeight: '600',
+    lineHeight: 21,
   },
   desc: {
     fontSize: 13,
-    marginTop: 2,
+    marginTop: 4,
+    lineHeight: 18,
   },
   meta: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 8,
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 10,
   },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    borderWidth: 1,
+  statusGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  delete: {
-    width: 28,
-    height: 28,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  priorityLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  dueText: {
+    fontSize: 12,
+    marginLeft: 'auto',
+  },
+  deleteBtn: {
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },

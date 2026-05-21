@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -17,7 +18,8 @@ import Header from '../components/Header';
 import AnalyticsCard from '../components/AnalyticsCard';
 import TaskCard from '../components/TaskCard';
 import { extractErrorMessage } from '../api/client';
-import { listTodos, updateTodo } from '../api/todos';
+import { deleteTodo, listTodos, updateTodo } from '../api/todos';
+import { cancelTodoReminder } from '../utils/notifications';
 import { scheduleDayAI } from '../api/ai';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -79,16 +81,28 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
     return unsub;
   }, [navigation, fetchTodos]);
 
-  const todaysTasks = useMemo(
-    () =>
-      todos.filter(
-        (t) =>
-          t.status !== 'completed' &&
-          (isToday(t.due_date) ||
-            (t.due_date && new Date(t.due_date).getTime() < Date.now())),
-      ),
-    [todos],
-  );
+  const todaysTasks = useMemo(() => {
+    const now = Date.now();
+    const matches = todos.filter((t) => {
+      if (isToday(t.due_date)) return true;
+      // Overdue past days: only keep if still active.
+      if (
+        t.due_date &&
+        new Date(t.due_date).getTime() < now &&
+        t.status !== 'completed'
+      ) {
+        return true;
+      }
+      return false;
+    });
+    // Active tasks first; completed sink to the bottom of the list.
+    return matches.sort((a, b) => {
+      const aDone = a.status === 'completed' ? 1 : 0;
+      const bDone = b.status === 'completed' ? 1 : 0;
+      if (aDone !== bDone) return aDone - bDone;
+      return 0;
+    });
+  }, [todos]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -102,10 +116,35 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
       setTodos(todos.map((t) => (t.id === todo.id ? { ...t, status: next } : t)));
       try {
         await updateTodo(todo.id, { status: next });
+        if (next === 'completed') await cancelTodoReminder(todo.id);
       } catch (err) {
         setTodos(before);
         setError(extractErrorMessage(err));
       }
+    },
+    [todos],
+  );
+
+  const handleDelete = useCallback(
+    (todo: Todo) => {
+      Alert.alert('Delete task', `Remove "${todo.title}"?`, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const before = todos;
+            setTodos(todos.filter((t) => t.id !== todo.id));
+            try {
+              await deleteTodo(todo.id);
+              await cancelTodoReminder(todo.id);
+            } catch (err) {
+              setTodos(before);
+              Alert.alert('Delete failed', extractErrorMessage(err));
+            }
+          },
+        },
+      ]);
     },
     [todos],
   );
@@ -202,9 +241,9 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
         renderItem={({ item }) => (
           <TaskCard
             todo={item}
-            compact
             onPress={() => navigation.navigate('TodoForm', { todo: item })}
             onToggleStatus={(next) => handleToggle(item, next)}
+            onDelete={() => handleDelete(item)}
           />
         )}
         ListEmptyComponent={
