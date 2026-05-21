@@ -16,6 +16,7 @@ class ParsedTask(BaseModel):
     subtasks: list[str] = Field(default_factory=list)
     deadline: str = ""
     priority: Literal["low", "medium", "high", ""] = ""
+    recurrence: Literal["daily", "weekly", "monthly", ""] = ""
 
 
 # ---------- /ai/schedule-day ----------
@@ -81,6 +82,7 @@ class TaskDraft(BaseModel):
     title: str
     priority: Literal["low", "medium", "high"] = "medium"
     deadline: str = ""
+    recurrence: Literal["daily", "weekly", "monthly", ""] = ""
 
 
 class ScheduleSlotDraft(BaseModel):

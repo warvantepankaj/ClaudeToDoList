@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+import calendar
+from datetime import datetime, timedelta, timezone
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -16,6 +17,17 @@ SORT_OPTIONS = {
 }
 
 
+def _as_utc(value: datetime | None) -> datetime | None:
+    """Force naive datetimes from MongoDB to be UTC-aware so the serialized
+    ISO string carries timezone info. Mobile/JS parsing of timezone-naive
+    ISO strings is engine-dependent and can shift times by the local offset."""
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 def _to_out(doc: dict) -> TodoOut:
     return TodoOut(
         id=str(doc["_id"]),
@@ -24,10 +36,28 @@ def _to_out(doc: dict) -> TodoOut:
         description=doc.get("description"),
         status=doc["status"],
         priority=doc["priority"],
-        due_date=doc.get("due_date"),
-        created_at=doc["created_at"],
-        updated_at=doc["updated_at"],
+        due_date=_as_utc(doc.get("due_date")),
+        recurrence=doc.get("recurrence"),
+        created_at=_as_utc(doc["created_at"]) or doc["created_at"],
+        updated_at=_as_utc(doc["updated_at"]) or doc["updated_at"],
     )
+
+
+def _next_due_date(current: datetime, recurrence: str) -> datetime:
+    """Bump a due_date by one recurrence step. Monthly clamps day-of-month."""
+    if recurrence == "daily":
+        return current + timedelta(days=1)
+    if recurrence == "weekly":
+        return current + timedelta(days=7)
+    if recurrence == "monthly":
+        year = current.year
+        month = current.month + 1
+        if month > 12:
+            month = 1
+            year += 1
+        last_day = calendar.monthrange(year, month)[1]
+        return current.replace(year=year, month=month, day=min(current.day, last_day))
+    return current
 
 
 def _parse_oid(value: str) -> ObjectId:
@@ -69,6 +99,7 @@ async def create_todo(
         "status": payload.status.value,
         "priority": payload.priority.value,
         "due_date": payload.due_date,
+        "recurrence": payload.recurrence.value if payload.recurrence else None,
         "created_at": now,
         "updated_at": now,
     }
@@ -98,9 +129,35 @@ async def update_todo(
         update["status"] = data["status"].value if hasattr(data["status"], "value") else data["status"]
     if "priority" in data and data["priority"] is not None:
         update["priority"] = data["priority"].value if hasattr(data["priority"], "value") else data["priority"]
+    if "recurrence" in data:
+        rec = data["recurrence"]
+        update["recurrence"] = rec.value if hasattr(rec, "value") else rec
     if not update:
         return await get_todo(db, user_id, todo_id)
     update["updated_at"] = datetime.now(timezone.utc)
+
+    before = await db.todos.find_one(
+        {"_id": oid, "user_id": user_id},
+        {"status": 1, "due_date": 1, "recurrence": 1},
+    )
+    if not before:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Todo not found")
+
+    # For recurring tasks: completing bumps due_date to the next occurrence
+    # and keeps status pending. One record, no completion clutter, history-free.
+    transitioned_to_completed = (
+        update.get("status") == "completed" and before.get("status") != "completed"
+    )
+    base_due = before.get("due_date")
+    recurrence = before.get("recurrence")
+    if (
+        transitioned_to_completed
+        and recurrence in ("daily", "weekly", "monthly")
+        and isinstance(base_due, datetime)
+    ):
+        update["status"] = "pending"
+        update["due_date"] = _next_due_date(base_due, recurrence)
+
     doc = await db.todos.find_one_and_update(
         {"_id": oid, "user_id": user_id},
         {"$set": update},

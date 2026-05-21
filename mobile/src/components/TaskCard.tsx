@@ -158,6 +158,12 @@ const TaskCard: React.FC<Props> = ({ todo, onPress, onToggleStatus, onDelete }) 
               {todo.priority.toUpperCase()}
             </Text>
 
+            {todo.recurrence && (
+              <Text style={[styles.recurrenceLabel, { color: colors.textMuted }]}>
+                ↻ {todo.recurrence}
+              </Text>
+            )}
+
             {due && (
               <Text
                 style={[
@@ -252,6 +258,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  recurrenceLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'capitalize',
   },
   dueText: {
     fontSize: 12,

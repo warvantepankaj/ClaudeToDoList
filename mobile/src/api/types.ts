@@ -1,5 +1,6 @@
 export type TodoStatus = 'pending' | 'in_progress' | 'completed';
 export type TodoPriority = 'low' | 'medium' | 'high';
+export type TodoRecurrence = 'daily' | 'weekly' | 'monthly';
 
 export type User = {
   id: string;
@@ -22,6 +23,7 @@ export type Todo = {
   status: TodoStatus;
   priority: TodoPriority;
   due_date?: string | null;
+  recurrence?: TodoRecurrence | null;
   created_at: string;
   updated_at: string;
 };
@@ -32,6 +34,7 @@ export type TodoCreatePayload = {
   status?: TodoStatus;
   priority?: TodoPriority;
   due_date?: string | null;
+  recurrence?: TodoRecurrence | null;
 };
 
 export type TodoUpdatePayload = Partial<TodoCreatePayload>;
@@ -50,6 +53,7 @@ export type ParsedTask = {
   subtasks: string[];
   deadline: string;
   priority: TodoPriority | '';
+  recurrence?: TodoRecurrence | '';
 };
 
 export type ScheduleTaskInput = {
@@ -110,6 +114,7 @@ export type PlanTaskDraft = {
   title: string;
   priority: TodoPriority;
   deadline: string;
+  recurrence?: TodoRecurrence | '';
 };
 
 export type PlanScheduleSlot = {

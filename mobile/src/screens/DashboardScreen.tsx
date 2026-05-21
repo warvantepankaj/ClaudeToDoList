@@ -115,7 +115,9 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
       const before = todos;
       setTodos(todos.map((t) => (t.id === todo.id ? { ...t, status: next } : t)));
       try {
-        await updateTodo(todo.id, { status: next });
+        const updated = await updateTodo(todo.id, { status: next });
+        // Backend may bump-in-place for recurring tasks; sync from response.
+        setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
         if (next === 'completed') await cancelTodoReminder(todo.id);
       } catch (err) {
         setTodos(before);

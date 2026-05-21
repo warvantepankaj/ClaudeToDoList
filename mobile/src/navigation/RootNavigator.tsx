@@ -9,6 +9,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import TaskListScreen from '../screens/TaskListScreen';
 import AIChatScreen from '../screens/AIChatScreen';
+import CalendarScreen from '../screens/CalendarScreen';
 import TodoFormScreen from '../screens/TodoFormScreen';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -22,6 +23,7 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   Dashboard: undefined;
   Tasks: undefined;
+  Calendar: undefined;
   AIChat: undefined;
 };
 
@@ -44,6 +46,7 @@ const AuthNavigator: React.FC = () => (
 const tabLabel: Record<keyof MainTabParamList, { label: string; glyph: string }> = {
   Dashboard: { label: 'Home', glyph: '◆' },
   Tasks: { label: 'Tasks', glyph: '☰' },
+  Calendar: { label: 'Calendar', glyph: '▦' },
   AIChat: { label: 'AI', glyph: '✦' },
 };
 
@@ -71,6 +74,7 @@ const TabsNavigator: React.FC = () => {
     >
       <MainTabs.Screen name="Dashboard" component={DashboardScreen} />
       <MainTabs.Screen name="Tasks" component={TaskListScreen} />
+      <MainTabs.Screen name="Calendar" component={CalendarScreen} />
       <MainTabs.Screen name="AIChat" component={AIChatScreen} />
     </MainTabs.Navigator>
   );

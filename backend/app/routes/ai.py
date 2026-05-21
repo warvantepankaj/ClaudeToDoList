@@ -27,12 +27,19 @@ _PARSE_TASK_SYSTEM = (
     "Infer a short title (max 80 chars), a deadline as ISO-8601 date or datetime "
     "(empty string if absent), a priority from {{low, medium, high}} based on urgency "
     "and importance, and up to 5 atomic subtasks. Today is {today}. "
-    "Never invent commitments not present in the input."
+    "Never invent commitments not present in the input. "
+    "Also detect recurrence from the input and return one of "
+    "'daily', 'weekly', 'monthly', or '' (empty string for one-shot tasks). "
+    "Trigger words: 'every day', 'daily', 'each day' -> daily; "
+    "'every week', 'weekly', 'every Monday/Tuesday/...' -> weekly; "
+    "'every month', 'monthly', 'every 1st/15th of the month' -> monthly. "
+    "If no recurrence is implied, return ''."
 )
 
 _PARSE_TASK_SCHEMA = (
     '{"title": string, "subtasks": string[], "deadline": string, '
-    '"priority": "low"|"medium"|"high"|""}'
+    '"priority": "low"|"medium"|"high"|"", '
+    '"recurrence": "daily"|"weekly"|"monthly"|""}'
 )
 
 
@@ -111,14 +118,34 @@ _PLAN_SYSTEM = (
     "→ type=question, questions=[\"What are your working hours today?\", "
     "\"Any must-do tasks?\", \"Any fixed meetings?\"]\n\n"
     "Use conversation history to avoid re-asking answered questions. "
-    "Use existing_tasks to avoid duplicates. Respect time_range as a hard constraint."
+    "Use existing_tasks to avoid duplicates. Respect time_range as a hard constraint.\n\n"
+    "RECURRENCE DETECTION (for every task you create):\n"
+    "Set `recurrence` to one of 'daily', 'weekly', 'monthly', or '' (empty).\n"
+    "Trigger words: 'every day' / 'daily' / 'each day' -> 'daily'; "
+    "'every week' / 'weekly' / 'every Monday/Tuesday/...' -> 'weekly'; "
+    "'every month' / 'monthly' / 'on the 1st of every month' -> 'monthly'. "
+    "If the user does not imply repetition, set recurrence to ''.\n\n"
+    "EXAMPLES (recurrence):\n"
+    "User: \"Daily standup at 9:30 AM\"\n"
+    "  → type=create_task, tasks=[{title:\"Daily standup\", priority:\"medium\", "
+    "deadline:\"<today>T09:30:00\", recurrence:\"daily\"}]\n"
+    "User: \"Weekly team meeting every Friday at 4pm\"\n"
+    "  → type=create_task, tasks=[{title:\"Team meeting\", priority:\"medium\", "
+    "deadline:\"<next Friday>T16:00:00\", recurrence:\"weekly\"}]\n"
+    "User: \"Pay rent on the 1st\"\n"
+    "  → type=create_task, tasks=[{title:\"Pay rent\", priority:\"high\", "
+    "deadline:\"<next 1st>T00:00:00\", recurrence:\"monthly\"}]\n"
+    "User: \"Buy milk tomorrow\"\n"
+    "  → type=create_task, tasks=[{title:\"Buy milk\", priority:\"medium\", "
+    "deadline:\"<tomorrow>T09:00:00\", recurrence:\"\"}]"
 )
 
 _PLAN_SCHEMA = (
     '{"type": "question"|"create_task"|"create_tasks"|"schedule", '
     '"message": string, '
     '"questions": string[], '
-    '"tasks": [{"title": string, "priority": "low"|"medium"|"high", "deadline": string}], '
+    '"tasks": [{"title": string, "priority": "low"|"medium"|"high", '
+    '"deadline": string, "recurrence": "daily"|"weekly"|"monthly"|""}], '
     '"schedule": [{"time": "HH:MM", "task": string, "priority": "low"|"medium"|"high"}]}'
 )
 

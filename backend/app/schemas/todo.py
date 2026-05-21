@@ -16,12 +16,19 @@ class TodoPriority(str, Enum):
     high = "high"
 
 
+class TodoRecurrence(str, Enum):
+    daily = "daily"
+    weekly = "weekly"
+    monthly = "monthly"
+
+
 class TodoCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
     status: TodoStatus = TodoStatus.pending
     priority: TodoPriority = TodoPriority.medium
     due_date: datetime | None = None
+    recurrence: TodoRecurrence | None = None
 
 
 class TodoUpdate(BaseModel):
@@ -30,6 +37,7 @@ class TodoUpdate(BaseModel):
     status: TodoStatus | None = None
     priority: TodoPriority | None = None
     due_date: datetime | None = None
+    recurrence: TodoRecurrence | None = None
 
 
 class TodoOut(BaseModel):
@@ -40,5 +48,6 @@ class TodoOut(BaseModel):
     status: TodoStatus
     priority: TodoPriority
     due_date: datetime | None = None
+    recurrence: TodoRecurrence | None = None
     created_at: datetime
     updated_at: datetime

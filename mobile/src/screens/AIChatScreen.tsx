@@ -152,6 +152,7 @@ const AIChatScreen: React.FC<Props> = () => {
             title: t.title,
             priority: t.priority,
             due_date: t.deadline || null,
+            recurrence: t.recurrence || null,
           });
         }
         setMessages((prev) => [
@@ -232,6 +233,7 @@ const AIChatScreen: React.FC<Props> = () => {
                       {t.deadline
                         ? ` · ${new Date(t.deadline).toLocaleString(undefined, { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric' })}`
                         : ''}
+                      {t.recurrence ? ` · ↻ ${t.recurrence}` : ''}
                     </Text>
                   </View>
                 ))}

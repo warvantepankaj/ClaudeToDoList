@@ -20,7 +20,7 @@ import { createTodo, updateTodo } from '../api/todos';
 import { parseTaskAI } from '../api/ai';
 import { extractErrorMessage } from '../api/client';
 import { cancelTodoReminder, scheduleTodoReminder } from '../utils/notifications';
-import type { TodoPriority, TodoStatus } from '../api/types';
+import type { TodoPriority, TodoRecurrence, TodoStatus } from '../api/types';
 import type { AppStackParamList } from '../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'TodoForm'>;
@@ -37,6 +37,13 @@ const priorityChoices: Array<{ key: TodoPriority; label: string }> = [
   { key: 'high', label: 'High' },
 ];
 
+const recurrenceChoices: Array<{ key: TodoRecurrence | 'none'; label: string }> = [
+  { key: 'none', label: 'None' },
+  { key: 'daily', label: 'Daily' },
+  { key: 'weekly', label: 'Weekly' },
+  { key: 'monthly', label: 'Monthly' },
+];
+
 const TodoFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const editing = route.params?.todo;
   const { colors } = useTheme();
@@ -47,6 +54,9 @@ const TodoFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const [priority, setPriority] = useState<TodoPriority>(editing?.priority ?? 'medium');
   const [dueDate, setDueDate] = useState<Date | null>(
     editing?.due_date ? new Date(editing.due_date) : null,
+  );
+  const [recurrence, setRecurrence] = useState<TodoRecurrence | 'none'>(
+    editing?.recurrence ?? 'none',
   );
   const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -67,6 +77,7 @@ const TodoFormScreen: React.FC<Props> = ({ navigation, route }) => {
       const parsed = await parseTaskAI(text);
       if (parsed.title) setTitle(parsed.title);
       if (parsed.priority) setPriority(parsed.priority);
+      if (parsed.recurrence) setRecurrence(parsed.recurrence);
       if (parsed.deadline) {
         const d = new Date(parsed.deadline);
         if (!Number.isNaN(d.getTime())) setDueDate(d);
@@ -77,7 +88,10 @@ const TodoFormScreen: React.FC<Props> = ({ navigation, route }) => {
           setDescription(parsed.subtasks.map((s) => `• ${s}`).join('\n'));
         }
       }
-      setAiInfo(`Parsed${parsed.subtasks?.length ? ` · ${parsed.subtasks.length} subtasks` : ''}`);
+      const bits: string[] = ['Parsed'];
+      if (parsed.recurrence) bits.push(`↻ ${parsed.recurrence}`);
+      if (parsed.subtasks?.length) bits.push(`${parsed.subtasks.length} subtasks`);
+      setAiInfo(bits.join(' · '));
     } catch (err) {
       setError(extractErrorMessage(err, 'AI parse failed'));
     } finally {
@@ -103,6 +117,7 @@ const TodoFormScreen: React.FC<Props> = ({ navigation, route }) => {
       status,
       priority,
       due_date: dueDate ? dueDate.toISOString() : null,
+      recurrence: recurrence === 'none' ? null : recurrence,
     };
     setSubmitting(true);
     try {
@@ -314,6 +329,39 @@ const TodoFormScreen: React.FC<Props> = ({ navigation, route }) => {
               </Pressable>
             )}
           </View>
+
+          <Text style={[styles.label, { color: colors.textMuted }]}>Repeat</Text>
+          <View style={styles.row}>
+            {recurrenceChoices.map((c) => (
+              <Pressable
+                key={c.key}
+                onPress={() => setRecurrence(c.key)}
+                style={[
+                  styles.choice,
+                  {
+                    backgroundColor:
+                      recurrence === c.key ? colors.primary : colors.surfaceMuted,
+                    borderColor:
+                      recurrence === c.key ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    color: recurrence === c.key ? colors.primaryText : colors.text,
+                    fontWeight: '600',
+                  }}
+                >
+                  {c.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          {recurrence !== 'none' && !dueDate && (
+            <Text style={{ color: colors.warning, fontSize: 12, marginTop: 6 }}>
+              Set a due date — recurring tasks need one to know when to repeat.
+            </Text>
+          )}
 
           {pickerMode && (
             <DateTimePicker
