@@ -1,8 +1,12 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  createBottomTabNavigator,
+  type BottomTabBarProps,
+} from '@react-navigation/bottom-tabs';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -43,42 +47,113 @@ const AuthNavigator: React.FC = () => (
   </AuthStack.Navigator>
 );
 
-const tabLabel: Record<keyof MainTabParamList, { label: string; glyph: string }> = {
+const tabMeta: Record<string, { label: string; glyph: string }> = {
   Dashboard: { label: 'Home', glyph: '◆' },
   Tasks: { label: 'Tasks', glyph: '☰' },
   Calendar: { label: 'Calendar', glyph: '▦' },
   AIChat: { label: 'AI', glyph: '✦' },
 };
 
-const TabsNavigator: React.FC = () => {
+/**
+ * Floating capsule tab bar — hairline border, soft shadow, active tab
+ * becomes a lime pill that expands to show its label.
+ */
+const FloatingTabBar: React.FC<BottomTabBarProps> = ({
+  state,
+  navigation,
+}) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  if (!state || !state.routes) return null;
+
   return (
-    <MainTabs.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          height: 64,
-          paddingTop: 6,
-          paddingBottom: 8,
-        },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-        tabBarIcon: ({ color }) => (
-          <Text style={{ color, fontSize: 18 }}>{tabLabel[route.name].glyph}</Text>
-        ),
-        tabBarLabel: tabLabel[route.name].label,
-      })}
+    <View
+      style={[
+        tabStyles.wrap,
+        { paddingBottom: Math.max(insets.bottom, 12) },
+      ]}
+      pointerEvents="box-none"
     >
-      <MainTabs.Screen name="Dashboard" component={DashboardScreen} />
-      <MainTabs.Screen name="Tasks" component={TaskListScreen} />
-      <MainTabs.Screen name="Calendar" component={CalendarScreen} />
-      <MainTabs.Screen name="AIChat" component={AIChatScreen} />
-    </MainTabs.Navigator>
+      <View
+        style={[
+          tabStyles.bar,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            shadowColor: colors.text,
+          },
+        ]}
+      >
+        {state.routes.map((route, index) => {
+          const focused = state.index === index;
+          const meta = tabMeta[route.name] ?? { label: route.name, glyph: '•' };
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!focused && !event.defaultPrevented) {
+              navigation.navigate(route.name as never);
+            }
+          };
+
+          return (
+            <Pressable
+              key={route.key}
+              onPress={onPress}
+              style={tabStyles.item}
+              accessibilityRole="button"
+              accessibilityLabel={meta.label}
+            >
+              <View
+                style={[
+                  tabStyles.pill,
+                  focused && { backgroundColor: colors.primary },
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: focused ? colors.primaryText : colors.textMuted,
+                    fontWeight: '800',
+                  }}
+                >
+                  {meta.glyph}
+                </Text>
+                {focused && (
+                  <Text
+                    style={{
+                      marginLeft: 7,
+                      color: colors.primaryText,
+                      fontSize: 13,
+                      fontWeight: '800',
+                      letterSpacing: -0.2,
+                    }}
+                  >
+                    {meta.label}
+                  </Text>
+                )}
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
   );
 };
+
+const TabsNavigator: React.FC = () => (
+  <MainTabs.Navigator
+    screenOptions={{ headerShown: false }}
+    tabBar={(props) => <FloatingTabBar {...props} />}
+  >
+    <MainTabs.Screen name="Dashboard" component={DashboardScreen} />
+    <MainTabs.Screen name="Tasks" component={TaskListScreen} />
+    <MainTabs.Screen name="Calendar" component={CalendarScreen} />
+    <MainTabs.Screen name="AIChat" component={AIChatScreen} />
+  </MainTabs.Navigator>
+);
 
 const AppNavigator: React.FC = () => {
   const { colors } = useTheme();
@@ -86,8 +161,8 @@ const AppNavigator: React.FC = () => {
     <AppStack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: colors.background },
-        headerTitleStyle: { color: colors.text },
-        headerTintColor: colors.primary,
+        headerTitleStyle: { color: colors.text, fontWeight: '800' },
+        headerTintColor: colors.text,
         contentStyle: { backgroundColor: colors.background },
       }}
     >
@@ -142,6 +217,45 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+});
+
+const tabStyles = StyleSheet.create({
+  wrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+  },
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderRadius: 999,
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  item: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    height: 40,
+    minWidth: 40,
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
 });
 

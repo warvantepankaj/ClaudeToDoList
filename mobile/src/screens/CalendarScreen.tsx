@@ -163,7 +163,8 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
         }
         const k = dayKey(d);
         projectedKeys.add(k);
-        (map[k] ??= []).push(cloned);
+        if (!map[k]) map[k] = [];
+        map[k].push(cloned);
       }
 
       // 2) For recurring tasks: render a "completed snapshot" on the day they
@@ -175,7 +176,8 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
         if (!Number.isNaN(lc.getTime()) && lc >= windowStart && lc <= windowEnd) {
           const k = dayKey(lc);
           if (!projectedKeys.has(k)) {
-            (map[k] ??= []).push({
+            if (!map[k]) map[k] = [];
+            map[k].push({
               ...t,
               status: 'completed',
               due_date: t.last_completed_at,
@@ -463,12 +465,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   dayHeaderText: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   list: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 18,
+    paddingBottom: 120,
   },
   empty: {
     textAlign: 'center',

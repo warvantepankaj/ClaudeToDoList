@@ -29,7 +29,7 @@ const InputBox: React.FC<Props> = ({
     <View
       style={[
         styles.wrap,
-        { backgroundColor: colors.inputBg, borderColor: colors.inputBorder },
+        { backgroundColor: colors.surface, borderColor: colors.border },
       ]}
     >
       <TextInput
@@ -53,7 +53,7 @@ const InputBox: React.FC<Props> = ({
           {sending ? (
             <ActivityIndicator color={colors.primaryText} size="small" />
           ) : (
-            <Text style={{ color: colors.primaryText, fontSize: 18, fontWeight: '700' }}>
+            <Text style={{ color: colors.primaryText, fontSize: 20, fontWeight: '900' }}>
               {sendLabel}
             </Text>
           )}
@@ -68,8 +68,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     borderWidth: 1,
-    borderRadius: 24,
-    paddingHorizontal: 14,
+    borderRadius: 28,
+    paddingLeft: 18,
+    paddingRight: 6,
     paddingVertical: 6,
     gap: 8,
   },
@@ -80,9 +81,9 @@ const styles = StyleSheet.create({
     maxHeight: 140,
   },
   send: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,

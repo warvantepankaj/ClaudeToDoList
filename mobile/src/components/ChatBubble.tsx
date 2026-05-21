@@ -14,16 +14,24 @@ const ChatBubble: React.FC<Props> = ({ role, text, meta, pending }) => {
   const { colors } = useTheme();
   const isUser = role === 'user';
 
-  const bubbleStyle = {
-    backgroundColor: isUser ? colors.primary : colors.surface,
-    borderColor: isUser ? colors.primary : colors.border,
-    alignSelf: isUser ? ('flex-end' as const) : ('flex-start' as const),
-    borderTopRightRadius: isUser ? 4 : 18,
-    borderTopLeftRadius: isUser ? 18 : 4,
-  };
+  const bubbleStyle = isUser
+    ? {
+        backgroundColor: colors.text,
+        borderColor: colors.text,
+        alignSelf: 'flex-end' as const,
+        borderTopRightRadius: 6,
+        borderTopLeftRadius: 20,
+      }
+    : {
+        backgroundColor: colors.surface,
+        borderColor: colors.border,
+        alignSelf: 'flex-start' as const,
+        borderTopRightRadius: 20,
+        borderTopLeftRadius: 6,
+      };
 
-  const textColor = isUser ? colors.primaryText : colors.text;
-  const metaColor = isUser ? colors.primaryText : colors.textMuted;
+  const textColor = isUser ? colors.textInverse : colors.text;
+  const metaColor = isUser ? colors.textInverse : colors.textMuted;
 
   return (
     <View style={[styles.bubble, bubbleStyle]}>
@@ -35,7 +43,7 @@ const ChatBubble: React.FC<Props> = ({ role, text, meta, pending }) => {
         </Text>
       )}
       {meta && !pending && (
-        <Text style={[styles.meta, { color: metaColor, opacity: isUser ? 0.8 : 1 }]}>
+        <Text style={[styles.meta, { color: metaColor, opacity: isUser ? 0.7 : 1 }]}>
           {meta}
         </Text>
       )}
@@ -45,20 +53,24 @@ const ChatBubble: React.FC<Props> = ({ role, text, meta, pending }) => {
 
 const styles = StyleSheet.create({
   bubble: {
-    maxWidth: '82%',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 18,
+    maxWidth: '84%',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
     borderWidth: 1,
     marginVertical: 4,
   },
   text: {
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 21,
+    fontWeight: '500',
   },
   meta: {
     marginTop: 6,
     fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 });
 

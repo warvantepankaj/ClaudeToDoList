@@ -15,90 +15,138 @@ const AnalyticsCard: React.FC<Props> = ({ todos }) => {
   const pct = total === 0 ? 0 : Math.round((completed / total) * 100);
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <View style={styles.row}>
-        <Text style={[styles.title, { color: colors.text }]}>Progress</Text>
-        <Text style={[styles.pct, { color: colors.primary }]}>{pct}%</Text>
+    <View style={[styles.card, { backgroundColor: colors.primary }]}>
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={[styles.eyebrow, { color: colors.primaryText }]}>
+            Velocity
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.primaryText }]}>
+            {completed} of {total} done
+          </Text>
+        </View>
+        <View style={styles.pctWrap}>
+          <Text style={[styles.pct, { color: colors.primaryText }]}>{pct}</Text>
+          <Text style={[styles.pctUnit, { color: colors.primaryText }]}>%</Text>
+        </View>
       </View>
 
-      <View style={[styles.barTrack, { backgroundColor: colors.surfaceMuted }]}>
+      <View style={styles.barTrack}>
         <View
           style={[
             styles.barFill,
-            { width: `${pct}%`, backgroundColor: colors.primary },
+            { width: `${pct}%`, backgroundColor: colors.primaryText },
           ]}
         />
       </View>
 
       <View style={styles.stats}>
-        <Stat label="Completed" value={completed} color={colors.success} />
-        <Stat label="In progress" value={inProgress} color={colors.info} />
-        <Stat label="Pending" value={pending} color={colors.textMuted} />
+        <Stat label="Done" value={completed} accentColor={colors.primaryText} />
+        <Divider color={colors.primaryText} />
+        <Stat
+          label="In progress"
+          value={inProgress}
+          accentColor={colors.primaryText}
+        />
+        <Divider color={colors.primaryText} />
+        <Stat label="Pending" value={pending} accentColor={colors.primaryText} />
       </View>
     </View>
   );
 };
 
-const Stat: React.FC<{ label: string; value: number; color: string }> = ({
+const Stat: React.FC<{ label: string; value: number; accentColor: string }> = ({
   label,
   value,
-  color,
-}) => {
-  const { colors } = useTheme();
-  return (
-    <View style={styles.stat}>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={[styles.statLabel, { color: colors.textMuted }]}>{label}</Text>
-    </View>
-  );
-};
+  accentColor,
+}) => (
+  <View style={styles.stat}>
+    <Text style={[styles.statValue, { color: accentColor }]}>{value}</Text>
+    <Text style={[styles.statLabel, { color: accentColor, opacity: 0.6 }]}>
+      {label}
+    </Text>
+  </View>
+);
+
+const Divider: React.FC<{ color: string }> = ({ color }) => (
+  <View style={[styles.divider, { backgroundColor: color, opacity: 0.15 }]} />
+);
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 24,
+    padding: 22,
+    marginBottom: 18,
   },
-  row: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: 18,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
+  eyebrow: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginTop: 4,
+    opacity: 0.8,
+  },
+  pctWrap: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
   },
   pct: {
+    fontSize: 52,
+    fontWeight: '900',
+    letterSpacing: -2,
+    lineHeight: 52,
+  },
+  pctUnit: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '800',
+    marginBottom: 6,
+    marginLeft: 2,
   },
   barTrack: {
-    height: 8,
-    borderRadius: 999,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(0,0,0,0.15)',
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    borderRadius: 999,
+    borderRadius: 3,
   },
   stats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 14,
+    alignItems: 'center',
+    marginTop: 18,
   },
   stat: {
-    alignItems: 'center',
     flex: 1,
+    alignItems: 'center',
   },
   statValue: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     marginTop: 2,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  divider: {
+    width: 1,
+    height: 28,
   },
 });
 

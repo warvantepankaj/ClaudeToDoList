@@ -15,6 +15,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import Header from '../components/Header';
+import ThemeToggle from '../components/ThemeToggle';
 import AnalyticsCard from '../components/AnalyticsCard';
 import TaskCard from '../components/TaskCard';
 import { extractErrorMessage } from '../api/client';
@@ -34,7 +35,7 @@ type Props = CompositeScreenProps<
 
 const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   const { user, logout } = useAuth();
-  const { colors, name: themeName, toggle } = useTheme();
+  const { colors } = useTheme();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -157,10 +158,31 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
       <Header
         title={user?.name ?? 'there'}
         subtitle="Hello,"
-        actions={[
-          { label: themeName === 'dark' ? '☀' : '☾', onPress: () => void toggle() },
-          { label: 'Logout', onPress: logout },
-        ]}
+        rightSlot={
+          <>
+            <ThemeToggle />
+            <Pressable
+              onPress={logout}
+              style={({ pressed }) => [
+                styles.logoutBtn,
+                {
+                  backgroundColor: colors.text,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  color: colors.textInverse,
+                  fontSize: 13,
+                  fontWeight: '700',
+                }}
+              >
+                Logout
+              </Text>
+            </Pressable>
+          </>
+        }
       />
 
       <FlatList
@@ -175,7 +197,14 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
             <AnalyticsCard todos={todos} />
 
             <View style={styles.sectionRow}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Today</Text>
+              <View>
+                <Text style={[styles.sectionEyebrow, { color: colors.textMuted }]}>
+                  Crush your top
+                </Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Today
+                </Text>
+              </View>
               <Pressable
                 onPress={handlePlanDay}
                 disabled={scheduling || todaysTasks.length === 0}
@@ -190,7 +219,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                 {scheduling ? (
                   <ActivityIndicator color={colors.primaryText} size="small" />
                 ) : (
-                  <Text style={{ color: colors.primaryText, fontWeight: '700', fontSize: 13 }}>
+                  <Text style={{ color: colors.primaryText, fontWeight: '800', fontSize: 13 }}>
                     ✦ Plan day
                   </Text>
                 )}
@@ -253,39 +282,57 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   list: {
-    paddingHorizontal: 16,
-    paddingBottom: 96,
+    paddingHorizontal: 18,
+    paddingBottom: 120,
   },
   sectionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-end',
+    marginBottom: 14,
+    marginTop: 4,
+  },
+  sectionEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    marginTop: 2,
   },
   aiBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 999,
+  },
+  logoutBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    minWidth: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scheduleBox: {
     borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 18,
   },
   scheduleHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   scheduleTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
   scheduleRow: {
     flexDirection: 'row',
@@ -295,24 +342,28 @@ const styles = StyleSheet.create({
   scheduleTime: {
     width: 56,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   scheduleTask: {
     flex: 1,
     fontSize: 14,
+    fontWeight: '500',
   },
   empty: {
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: 40,
+    paddingHorizontal: 30,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   emptyText: {
     fontSize: 14,
-    marginTop: 6,
+    marginTop: 8,
     textAlign: 'center',
+    lineHeight: 20,
   },
   error: {
     marginBottom: 12,

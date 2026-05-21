@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -57,8 +57,13 @@ const toDeadlineISO = (timeHHMM: string): string | null => {
   return d.toISOString();
 };
 
+// Floating tab bar height (capsule + its safe-area padding). Used to keep
+// content visually above it.
+const TAB_BAR_CLEARANCE = 76;
+
 const AIChatScreen: React.FC<Props> = () => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<Msg[]>([INITIAL]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -358,7 +363,8 @@ const AIChatScreen: React.FC<Props> = () => {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <FlatList
           ref={listRef}
@@ -369,7 +375,12 @@ const AIChatScreen: React.FC<Props> = () => {
           onContentSizeChange={scrollToEnd}
         />
 
-        <View style={styles.inputWrap}>
+        <View
+          style={[
+            styles.inputWrap,
+            { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE },
+          ]}
+        >
           <InputBox
             placeholder='e.g. "Dinner at 10pm" or "Buy milk"'
             value={input}
@@ -392,9 +403,8 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   inputWrap: {
-    paddingHorizontal: 14,
-    paddingTop: 6,
-    paddingBottom: Platform.OS === 'ios' ? 6 : 10,
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   formRow: {
     flexDirection: 'row',

@@ -49,17 +49,17 @@ const Chip: React.FC<{
       onPress={onPress}
       style={[
         styles.chip,
-        {
-          backgroundColor: active ? colors.primary : colors.surfaceMuted,
-          borderColor: active ? colors.primary : colors.border,
-        },
+        active
+          ? { backgroundColor: colors.text, borderColor: colors.text }
+          : { backgroundColor: colors.surface, borderColor: colors.border },
       ]}
     >
       <Text
         style={{
-          color: active ? colors.primaryText : colors.text,
-          fontWeight: active ? '600' : '500',
+          color: active ? colors.textInverse : colors.text,
+          fontWeight: '600',
           fontSize: 13,
+          letterSpacing: -0.1,
         }}
       >
         {label}
@@ -81,21 +81,22 @@ const FilterBar: React.FC<Props> = ({
   const { colors } = useTheme();
   return (
     <View style={styles.wrap}>
-      <TextInput
+      <View
         style={[
-          styles.search,
-          {
-            color: colors.text,
-            backgroundColor: colors.inputBg,
-            borderColor: colors.inputBorder,
-          },
+          styles.searchWrap,
+          { backgroundColor: colors.surface, borderColor: colors.border },
         ]}
-        placeholder="Search todos…"
-        placeholderTextColor={colors.placeholder}
-        value={search}
-        onChangeText={onSearchChange}
-        autoCorrect={false}
-      />
+      >
+        <Text style={[styles.searchGlyph, { color: colors.textMuted }]}>⌕</Text>
+        <TextInput
+          style={[styles.search, { color: colors.text }]}
+          placeholder="Search tasks…"
+          placeholderTextColor={colors.placeholder}
+          value={search}
+          onChangeText={onSearchChange}
+          autoCorrect={false}
+        />
+      </View>
 
       <ScrollView
         horizontal
@@ -148,13 +149,22 @@ const FilterBar: React.FC<Props> = ({
 const styles = StyleSheet.create({
   wrap: {
     gap: 10,
-    marginBottom: 12,
+    marginBottom: 14,
+  },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+  },
+  searchGlyph: {
+    fontSize: 16,
+    marginRight: 8,
   },
   search: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    flex: 1,
+    paddingVertical: 12,
     fontSize: 15,
   },
   row: {

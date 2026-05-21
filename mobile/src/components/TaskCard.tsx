@@ -31,30 +31,29 @@ const formatDue = (iso?: string | null): string | null => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
   const now = new Date();
-  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const time = d.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 
-  if (isSameDay(d, now)) return `Today, ${time}`;
+  if (isSameDay(d, now)) return `Today · ${time}`;
 
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  if (isSameDay(d, tomorrow)) return `Tomorrow, ${time}`;
+  if (isSameDay(d, tomorrow)) return `Tomorrow · ${time}`;
 
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
-  if (isSameDay(d, yesterday)) return `Yesterday, ${time}`;
+  if (isSameDay(d, yesterday)) return `Yesterday · ${time}`;
 
   const dayDiff = Math.round((d.getTime() - now.getTime()) / 86_400_000);
   if (dayDiff > 1 && dayDiff < 7) {
     const dayName = d.toLocaleDateString(undefined, { weekday: 'short' });
-    return `${dayName}, ${time}`;
+    return `${dayName} · ${time}`;
   }
-  return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
+  return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${time}`;
 };
 
-/* Status indicator: three visually distinct states.
- *   pending      → empty ring
- *   in_progress  → ring with a centered dot (clearly "started")
- *   completed    → filled circle with ✓ */
 const StatusIndicator: React.FC<{
   status: TodoStatus;
   color: string;
@@ -76,7 +75,7 @@ const StatusIndicator: React.FC<{
       <View style={[styles.indicatorDot, { backgroundColor: color }]} />
     )}
     {status === 'completed' && (
-      <Text style={{ color: primaryText, fontSize: 13, fontWeight: '800' }}>✓</Text>
+      <Text style={{ color: primaryText, fontSize: 12, fontWeight: '900' }}>✓</Text>
     )}
   </Pressable>
 );
@@ -100,7 +99,7 @@ const TaskCard: React.FC<Props> = ({ todo, onPress, onToggleStatus, onDelete }) 
         {
           backgroundColor: colors.surface,
           borderColor: colors.border,
-          opacity: pressed && onPress ? 0.9 : 1,
+          opacity: pressed && onPress ? 0.96 : 1,
         },
       ]}
     >
@@ -132,7 +131,9 @@ const TaskCard: React.FC<Props> = ({ todo, onPress, onToggleStatus, onDelete }) 
             </Text>
             {onDelete && (
               <Pressable onPress={onDelete} hitSlop={10} style={styles.deleteBtn}>
-                <Text style={{ color: colors.textMuted, fontSize: 18 }}>×</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 20, lineHeight: 20 }}>
+                  ×
+                </Text>
               </Pressable>
             )}
           </View>
@@ -149,17 +150,19 @@ const TaskCard: React.FC<Props> = ({ todo, onPress, onToggleStatus, onDelete }) 
           <View style={styles.meta}>
             <View style={styles.statusGroup}>
               <View style={[styles.statusDot, { backgroundColor: sColor }]} />
-              <Text style={[styles.statusText, { color: sColor }]}>
+              <Text style={[styles.statusText, { color: colors.text }]}>
                 {statusLabel[todo.status]}
               </Text>
             </View>
 
-            <Text style={[styles.priorityLabel, { color: pColor }]}>
-              {todo.priority.toUpperCase()}
-            </Text>
+            <View style={[styles.priorityChip, { backgroundColor: pColor + '1A' }]}>
+              <Text style={[styles.priorityChipText, { color: pColor }]}>
+                {todo.priority.toUpperCase()}
+              </Text>
+            </View>
 
             {todo.recurrence && (
-              <Text style={[styles.recurrenceLabel, { color: colors.textMuted }]}>
+              <Text style={[styles.recurrence, { color: colors.textMuted }]}>
                 ↻ {todo.recurrence}
               </Text>
             )}
@@ -167,14 +170,14 @@ const TaskCard: React.FC<Props> = ({ todo, onPress, onToggleStatus, onDelete }) 
             {due && (
               <Text
                 style={[
-                  styles.dueText,
+                  styles.due,
                   {
                     color: overdue ? colors.danger : colors.textMuted,
                     fontWeight: overdue ? '700' : '500',
                   },
                 ]}
               >
-                {overdue ? 'Overdue · ' : ''}
+                {overdue ? '⚠ ' : ''}
                 {due}
               </Text>
             )}
@@ -189,28 +192,29 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 18,
     marginBottom: 10,
     overflow: 'hidden',
   },
   priorityStripe: {
-    width: 4,
+    width: 3,
   },
   body: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     gap: 12,
   },
   indicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
+    marginTop: 1,
   },
   indicatorDot: {
     width: 8,
@@ -225,8 +229,9 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 21,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    lineHeight: 22,
   },
   desc: {
     fontSize: 13,
@@ -246,25 +251,30 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  priorityLabel: {
-    fontSize: 11,
+  priorityChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  priorityChipText: {
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-  recurrenceLabel: {
+  recurrence: {
     fontSize: 11,
     fontWeight: '600',
     textTransform: 'capitalize',
   },
-  dueText: {
+  due: {
     fontSize: 12,
     marginLeft: 'auto',
   },

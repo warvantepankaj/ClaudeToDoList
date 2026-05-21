@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -32,8 +32,11 @@ type Props = CompositeScreenProps<
 
 type SortKey = NonNullable<TodoListParams['sort']>;
 
+const TAB_BAR_CLEARANCE = 76;
+
 const TaskListScreen: React.FC<Props> = ({ navigation }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -192,7 +195,11 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
         onPress={() => navigation.navigate('TodoForm', {})}
         style={({ pressed }) => [
           styles.fab,
-          { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1 },
+          {
+            backgroundColor: colors.primary,
+            opacity: pressed ? 0.9 : 1,
+            bottom: insets.bottom + TAB_BAR_CLEARANCE + 12,
+          },
         ]}
       >
         <Text style={{ color: colors.primaryText, fontSize: 28, lineHeight: 30 }}>+</Text>
@@ -203,21 +210,24 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   list: {
-    paddingHorizontal: 16,
-    paddingBottom: 96,
+    paddingHorizontal: 18,
+    paddingBottom: 130,
   },
   empty: {
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: 40,
+    paddingHorizontal: 30,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   emptyText: {
     fontSize: 14,
-    marginTop: 6,
+    marginTop: 8,
     textAlign: 'center',
+    lineHeight: 20,
   },
   error: {
     marginBottom: 12,
@@ -226,17 +236,16 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 20,
-    bottom: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
   },
 });
 
