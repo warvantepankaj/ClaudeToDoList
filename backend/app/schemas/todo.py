@@ -49,5 +49,6 @@ class TodoOut(BaseModel):
     priority: TodoPriority
     due_date: datetime | None = None
     recurrence: TodoRecurrence | None = None
+    last_completed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime

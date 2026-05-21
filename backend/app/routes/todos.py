@@ -15,6 +15,7 @@ from app.services.todo_service import (
     delete_todo,
     get_todo,
     list_todos,
+    uncomplete_todo,
     update_todo,
 )
 
@@ -75,3 +76,12 @@ async def delete_user_todo(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ) -> None:
     await delete_todo(db, user_id=current_user["_id"], todo_id=todo_id)
+
+
+@router.post("/{todo_id}/uncomplete", response_model=TodoOut)
+async def uncomplete_user_todo(
+    todo_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> TodoOut:
+    return await uncomplete_todo(db, user_id=current_user["_id"], todo_id=todo_id)

@@ -24,3 +24,8 @@ export const getTodo = async (id: string) => {
   const { data } = await api.get<Todo>(`/todos/${id}`);
   return data;
 };
+
+export const uncompleteTodo = async (id: string) => {
+  const { data } = await api.post<Todo>(`/todos/${id}/uncomplete`);
+  return data;
+};

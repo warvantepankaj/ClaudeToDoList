@@ -17,9 +17,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Header from '../components/Header';
 import FilterBar from '../components/FilterBar';
 import TaskCard from '../components/TaskCard';
-import { deleteTodo, listTodos, updateTodo } from '../api/todos';
+import { deleteTodo, listTodos, uncompleteTodo, updateTodo } from '../api/todos';
 import { extractErrorMessage } from '../api/client';
 import { cancelTodoReminder } from '../utils/notifications';
+import { getDisplayTask } from '../utils/recurringDisplay';
 import { useTheme } from '../context/ThemeContext';
 import type { Todo, TodoListParams, TodoPriority, TodoStatus } from '../api/types';
 import type { AppStackParamList, MainTabParamList } from '../navigation/RootNavigator';
@@ -91,9 +92,13 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
   const handleToggleStatus = useCallback(
     async (todo: Todo, next: TodoStatus) => {
       const before = todos;
+      const isSnapshotUndo =
+        !!todo.recurrence && !!todo.last_completed_at && next === 'pending';
       setTodos(todos.map((t) => (t.id === todo.id ? { ...t, status: next } : t)));
       try {
-        const updated = await updateTodo(todo.id, { status: next });
+        const updated = isSnapshotUndo
+          ? await uncompleteTodo(todo.id)
+          : await updateTodo(todo.id, { status: next });
         setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
         if (next === 'completed') await cancelTodoReminder(todo.id);
       } catch (err) {
@@ -158,14 +163,17 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
             {error && <Text style={[styles.error, { color: colors.danger }]}>{error}</Text>}
           </View>
         }
-        renderItem={({ item }) => (
-          <TaskCard
-            todo={item}
-            onPress={() => navigation.navigate('TodoForm', { todo: item })}
-            onToggleStatus={(next) => handleToggleStatus(item, next)}
-            onDelete={() => handleDelete(item)}
-          />
-        )}
+        renderItem={({ item }) => {
+          const display = getDisplayTask(item);
+          return (
+            <TaskCard
+              todo={display}
+              onPress={() => navigation.navigate('TodoForm', { todo: item })}
+              onToggleStatus={(next) => handleToggleStatus(item, next)}
+              onDelete={() => handleDelete(item)}
+            />
+          );
+        }}
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />

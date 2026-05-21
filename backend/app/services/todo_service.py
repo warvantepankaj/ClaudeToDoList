@@ -38,6 +38,7 @@ def _to_out(doc: dict) -> TodoOut:
         priority=doc["priority"],
         due_date=_as_utc(doc.get("due_date")),
         recurrence=doc.get("recurrence"),
+        last_completed_at=_as_utc(doc.get("last_completed_at")),
         created_at=_as_utc(doc["created_at"]) or doc["created_at"],
         updated_at=_as_utc(doc["updated_at"]) or doc["updated_at"],
     )
@@ -55,6 +56,23 @@ def _next_due_date(current: datetime, recurrence: str) -> datetime:
         if month > 12:
             month = 1
             year += 1
+        last_day = calendar.monthrange(year, month)[1]
+        return current.replace(year=year, month=month, day=min(current.day, last_day))
+    return current
+
+
+def _prev_due_date(current: datetime, recurrence: str) -> datetime:
+    """Inverse of _next_due_date: walk one recurrence step backwards."""
+    if recurrence == "daily":
+        return current - timedelta(days=1)
+    if recurrence == "weekly":
+        return current - timedelta(days=7)
+    if recurrence == "monthly":
+        year = current.year
+        month = current.month - 1
+        if month < 1:
+            month = 12
+            year -= 1
         last_day = calendar.monthrange(year, month)[1]
         return current.replace(year=year, month=month, day=min(current.day, last_day))
     return current
@@ -156,6 +174,9 @@ async def update_todo(
         and isinstance(base_due, datetime)
     ):
         update["status"] = "pending"
+        # Record when the user actually pressed complete — matches what "today"
+        # means in mobile lists, especially for late completions.
+        update["last_completed_at"] = datetime.now(timezone.utc)
         update["due_date"] = _next_due_date(base_due, recurrence)
 
     doc = await db.todos.find_one_and_update(
@@ -173,3 +194,39 @@ async def delete_todo(db: AsyncIOMotorDatabase, user_id: ObjectId, todo_id: str)
     result = await db.todos.delete_one({"_id": oid, "user_id": user_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Todo not found")
+
+
+async def uncomplete_todo(
+    db: AsyncIOMotorDatabase, user_id: ObjectId, todo_id: str
+) -> TodoOut:
+    """Revert the most recent bump-in-place on a recurring task: due_date moves
+    one interval backwards and last_completed_at is cleared."""
+    oid = _parse_oid(todo_id)
+    doc = await db.todos.find_one({"_id": oid, "user_id": user_id})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Todo not found")
+    recurrence = doc.get("recurrence")
+    base_due = doc.get("due_date")
+    if (
+        recurrence not in ("daily", "weekly", "monthly")
+        or not isinstance(base_due, datetime)
+        or not doc.get("last_completed_at")
+    ):
+        # Nothing to revert; return as-is.
+        return _to_out(doc)
+    reverted_due = _prev_due_date(base_due, recurrence)
+    updated = await db.todos.find_one_and_update(
+        {"_id": oid, "user_id": user_id},
+        {
+            "$set": {
+                "due_date": reverted_due,
+                "last_completed_at": None,
+                "status": "pending",
+                "updated_at": datetime.now(timezone.utc),
+            }
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Todo not found")
+    return _to_out(updated)

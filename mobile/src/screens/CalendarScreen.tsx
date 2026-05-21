@@ -145,11 +145,11 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
       999,
     );
     for (const t of todos) {
+      // 1) Pending/in_progress occurrences (real + projected for recurring).
       const occurrences = expandOccurrences(t, windowStart, windowEnd);
-      if (!occurrences.length) continue;
       const baseDue = t.due_date ? new Date(t.due_date) : null;
+      const projectedKeys = new Set<string>();
       for (const d of occurrences) {
-        // Clone the task with the projected date so cards display the right time.
         let cloned: Todo = t;
         if (baseDue && !Number.isNaN(baseDue.getTime())) {
           const occ = new Date(d);
@@ -161,8 +161,27 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
           );
           cloned = { ...t, due_date: occ.toISOString() };
         }
-        const key = dayKey(d);
-        (map[key] ??= []).push(cloned);
+        const k = dayKey(d);
+        projectedKeys.add(k);
+        (map[k] ??= []).push(cloned);
+      }
+
+      // 2) For recurring tasks: render a "completed snapshot" on the day they
+      // were last completed. Skip if a projection already lives on that day
+      // (avoids duplicate entries when due_date and last_completed_at overlap
+      // — e.g., the user edited the task and shifted due_date backwards).
+      if (t.recurrence && t.last_completed_at) {
+        const lc = new Date(t.last_completed_at);
+        if (!Number.isNaN(lc.getTime()) && lc >= windowStart && lc <= windowEnd) {
+          const k = dayKey(lc);
+          if (!projectedKeys.has(k)) {
+            (map[k] ??= []).push({
+              ...t,
+              status: 'completed',
+              due_date: t.last_completed_at,
+            });
+          }
+        }
       }
     }
     return map;
@@ -338,19 +357,26 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
           data={selectedTasks}
           keyExtractor={(t) => `${t.id}-${t.due_date ?? 'na'}`}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <TaskCard
-              todo={item}
-              // For projected occurrences, edit the SOURCE task (not the clone)
-              // so changes to time/recurrence don't accidentally move the base
-              // task to a future projection date.
-              onPress={() => {
-                const source = todos.find((t) => t.id === item.id) ?? item;
-                navigation.navigate('TodoForm', { todo: source });
-              }}
-              onToggleStatus={(next) => handleToggle(item, next)}
-            />
-          )}
+          renderItem={({ item }) => {
+            const source = todos.find((t) => t.id === item.id) ?? item;
+            const isCompletedSnapshotItem =
+              item.status === 'completed' && !!item.recurrence;
+            // Lock only RECURRING projections in the future. Non-recurring tasks
+            // scheduled for future dates stay editable (they're real records,
+            // not projections). Today's instance is editable too.
+            const itemDate = item.due_date ? new Date(item.due_date) : null;
+            const itemDay = itemDate ? startOfDay(itemDate) : null;
+            const isFutureRecurring =
+              !!item.recurrence && !!itemDay && itemDay > today;
+            const readOnly = isCompletedSnapshotItem || isFutureRecurring;
+            return (
+              <TaskCard
+                todo={item}
+                onPress={readOnly ? undefined : () => navigation.navigate('TodoForm', { todo: source })}
+                onToggleStatus={readOnly ? undefined : (next) => handleToggle(item, next)}
+              />
+            );
+          }}
           ListEmptyComponent={
             <Text style={[styles.empty, { color: colors.textMuted }]}>
               No tasks scheduled.

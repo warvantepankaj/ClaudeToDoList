@@ -24,6 +24,7 @@ export type Todo = {
   priority: TodoPriority;
   due_date?: string | null;
   recurrence?: TodoRecurrence | null;
+  last_completed_at?: string | null;
   created_at: string;
   updated_at: string;
 };

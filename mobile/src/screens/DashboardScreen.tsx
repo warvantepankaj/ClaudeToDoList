@@ -18,8 +18,9 @@ import Header from '../components/Header';
 import AnalyticsCard from '../components/AnalyticsCard';
 import TaskCard from '../components/TaskCard';
 import { extractErrorMessage } from '../api/client';
-import { deleteTodo, listTodos, updateTodo } from '../api/todos';
+import { deleteTodo, listTodos, uncompleteTodo, updateTodo } from '../api/todos';
 import { cancelTodoReminder } from '../utils/notifications';
+import { getDisplayTask, matchesToday } from '../utils/recurringDisplay';
 import { scheduleDayAI } from '../api/ai';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -30,17 +31,6 @@ type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Dashboard'>,
   NativeStackScreenProps<AppStackParamList>
 >;
-
-const isToday = (iso?: string | null): boolean => {
-  if (!iso) return false;
-  const d = new Date(iso);
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
-};
 
 const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   const { user, logout } = useAuth();
@@ -82,25 +72,12 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   }, [navigation, fetchTodos]);
 
   const todaysTasks = useMemo(() => {
-    const now = Date.now();
-    const matches = todos.filter((t) => {
-      if (isToday(t.due_date)) return true;
-      // Overdue past days: only keep if still active.
-      if (
-        t.due_date &&
-        new Date(t.due_date).getTime() < now &&
-        t.status !== 'completed'
-      ) {
-        return true;
-      }
-      return false;
-    });
-    // Active tasks first; completed sink to the bottom of the list.
+    const matches = todos.filter(matchesToday);
+    // Active tasks first; completed (including snapshots) sink to the bottom.
     return matches.sort((a, b) => {
-      const aDone = a.status === 'completed' ? 1 : 0;
-      const bDone = b.status === 'completed' ? 1 : 0;
-      if (aDone !== bDone) return aDone - bDone;
-      return 0;
+      const aDone = getDisplayTask(a).status === 'completed' ? 1 : 0;
+      const bDone = getDisplayTask(b).status === 'completed' ? 1 : 0;
+      return aDone - bDone;
     });
   }, [todos]);
 
@@ -113,10 +90,14 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   const handleToggle = useCallback(
     async (todo: Todo, next: TodoStatus) => {
       const before = todos;
+      // Toggle from a completed-today recurring snapshot → un-complete.
+      const isSnapshotUndo =
+        !!todo.recurrence && !!todo.last_completed_at && next === 'pending';
       setTodos(todos.map((t) => (t.id === todo.id ? { ...t, status: next } : t)));
       try {
-        const updated = await updateTodo(todo.id, { status: next });
-        // Backend may bump-in-place for recurring tasks; sync from response.
+        const updated = isSnapshotUndo
+          ? await uncompleteTodo(todo.id)
+          : await updateTodo(todo.id, { status: next });
         setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
         if (next === 'completed') await cancelTodoReminder(todo.id);
       } catch (err) {
@@ -240,14 +221,19 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
             {error && <Text style={[styles.error, { color: colors.danger }]}>{error}</Text>}
           </View>
         }
-        renderItem={({ item }) => (
-          <TaskCard
-            todo={item}
-            onPress={() => navigation.navigate('TodoForm', { todo: item })}
-            onToggleStatus={(next) => handleToggle(item, next)}
-            onDelete={() => handleDelete(item)}
-          />
-        )}
+        renderItem={({ item }) => {
+          const display = getDisplayTask(item);
+          return (
+            <TaskCard
+              todo={display}
+              // Always edit the underlying source task, never the snapshot.
+              onPress={() => navigation.navigate('TodoForm', { todo: item })}
+              // Toggle on a snapshot un-completes via handleToggle's snapshot path.
+              onToggleStatus={(next) => handleToggle(item, next)}
+              onDelete={() => handleDelete(item)}
+            />
+          );
+        }}
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
