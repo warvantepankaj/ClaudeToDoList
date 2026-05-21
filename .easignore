@@ -1,0 +1,22 @@
+# Exclude backend from EAS Build archive — mobile app doesn't need it,
+# and backend/.venv contains POSIX symlinks that fail lstat on Windows.
+backend/
+
+# Standard ignores (EAS falls back to .gitignore only if .easignore is absent,
+# so we must restate them here)
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+ios/
+android/
+.env
+.env.local
+.env.*.local
+*.log
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.tsbuildinfo

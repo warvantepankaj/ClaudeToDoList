@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Todo List",
-    "slug": "todolist-mobile",
+    "slug": "todolist",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -9,7 +9,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#0f172a"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.example.todolist"
@@ -33,7 +35,10 @@
       "expo-secure-store"
     ],
     "extra": {
-      "eas": {}
-    }
+      "eas": {
+        "projectId": "4836c71c-a17d-4dab-a8dd-23491d6d6654"
+      }
+    },
+    "owner": "pankaj046s-organization"
   }
 }
