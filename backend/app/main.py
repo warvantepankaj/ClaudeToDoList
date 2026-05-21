@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.db.mongo import close_mongo_connection, connect_to_mongo
+from app.routes.ai import router as ai_router
 from app.routes.auth import router as auth_router
 from app.routes.todos import router as todos_router
 
@@ -38,6 +39,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(todos_router)
+    app.include_router(ai_router)
     return app
 
 

@@ -7,9 +7,10 @@ import type { Todo, TodoStatus } from '../api/types';
 
 type Props = {
   todo: Todo;
-  onPress: () => void;
-  onToggleStatus: (next: TodoStatus) => void;
-  onDelete: () => void;
+  onPress?: () => void;
+  onToggleStatus?: (next: TodoStatus) => void;
+  onDelete?: () => void;
+  compact?: boolean;
 };
 
 const formatDue = (iso?: string | null) => {
@@ -33,40 +34,52 @@ const statusLabel: Record<TodoStatus, string> = {
 const nextStatus = (s: TodoStatus): TodoStatus =>
   s === 'pending' ? 'in_progress' : s === 'in_progress' ? 'completed' : 'pending';
 
-const TodoItem: React.FC<Props> = ({ todo, onPress, onToggleStatus, onDelete }) => {
+const TaskCard: React.FC<Props> = ({
+  todo,
+  onPress,
+  onToggleStatus,
+  onDelete,
+  compact = false,
+}) => {
   const { colors } = useTheme();
   const due = formatDue(todo.due_date);
   const overdue =
-    todo.due_date && new Date(todo.due_date).getTime() < Date.now() && todo.status !== 'completed';
+    !!todo.due_date &&
+    new Date(todo.due_date).getTime() < Date.now() &&
+    todo.status !== 'completed';
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
+        compact && styles.cardCompact,
         {
           backgroundColor: colors.surface,
           borderColor: colors.border,
-          opacity: pressed ? 0.85 : 1,
+          opacity: pressed && onPress ? 0.85 : 1,
         },
       ]}
     >
       <View style={styles.row}>
-        <Pressable
-          onPress={() => onToggleStatus(nextStatus(todo.status))}
-          style={[
-            styles.checkbox,
-            {
-              borderColor: statusColor(todo.status, colors),
-              backgroundColor:
-                todo.status === 'completed' ? statusColor(todo.status, colors) : 'transparent',
-            },
-          ]}
-        >
-          {todo.status === 'completed' && (
-            <Text style={{ color: colors.primaryText, fontWeight: '700' }}>✓</Text>
-          )}
-        </Pressable>
+        {onToggleStatus && (
+          <Pressable
+            onPress={() => onToggleStatus(nextStatus(todo.status))}
+            hitSlop={8}
+            style={[
+              styles.checkbox,
+              {
+                borderColor: statusColor(todo.status, colors),
+                backgroundColor:
+                  todo.status === 'completed' ? statusColor(todo.status, colors) : 'transparent',
+              },
+            ]}
+          >
+            {todo.status === 'completed' && (
+              <Text style={{ color: colors.primaryText, fontWeight: '700' }}>✓</Text>
+            )}
+          </Pressable>
+        )}
 
         <View style={{ flex: 1 }}>
           <Text
@@ -81,41 +94,23 @@ const TodoItem: React.FC<Props> = ({ todo, onPress, onToggleStatus, onDelete }) 
           >
             {todo.title}
           </Text>
-          {!!todo.description && (
+          {!compact && !!todo.description && (
             <Text style={[styles.desc, { color: colors.textMuted }]} numberOfLines={2}>
               {todo.description}
             </Text>
           )}
 
           <View style={styles.meta}>
-            <View
-              style={[
-                styles.badge,
-                {
-                  backgroundColor: priorityColor(todo.priority, colors) + '22',
-                  borderColor: priorityColor(todo.priority, colors),
-                },
-              ]}
-            >
-              <Text style={{ color: priorityColor(todo.priority, colors), fontSize: 11, fontWeight: '600' }}>
-                {todo.priority.toUpperCase()}
-              </Text>
-            </View>
-
-            <View
-              style={[
-                styles.badge,
-                {
-                  backgroundColor: statusColor(todo.status, colors) + '22',
-                  borderColor: statusColor(todo.status, colors),
-                },
-              ]}
-            >
-              <Text style={{ color: statusColor(todo.status, colors), fontSize: 11, fontWeight: '600' }}>
-                {statusLabel[todo.status]}
-              </Text>
-            </View>
-
+            <Badge
+              text={todo.priority.toUpperCase()}
+              color={priorityColor(todo.priority, colors)}
+            />
+            {!compact && (
+              <Badge
+                text={statusLabel[todo.status]}
+                color={statusColor(todo.status, colors)}
+              />
+            )}
             {due && (
               <Text
                 style={{
@@ -131,20 +126,31 @@ const TodoItem: React.FC<Props> = ({ todo, onPress, onToggleStatus, onDelete }) 
           </View>
         </View>
 
-        <Pressable onPress={onDelete} hitSlop={10} style={styles.delete}>
-          <Text style={{ color: colors.danger, fontSize: 18 }}>×</Text>
-        </Pressable>
+        {onDelete && (
+          <Pressable onPress={onDelete} hitSlop={10} style={styles.delete}>
+            <Text style={{ color: colors.danger, fontSize: 18 }}>×</Text>
+          </Pressable>
+        )}
       </View>
     </Pressable>
   );
 };
 
+const Badge: React.FC<{ text: string; color: string }> = ({ text, color }) => (
+  <View style={[styles.badge, { backgroundColor: color + '22', borderColor: color }]}>
+    <Text style={{ color, fontSize: 11, fontWeight: '600' }}>{text}</Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 14,
     marginBottom: 10,
+  },
+  cardCompact: {
+    padding: 12,
   },
   row: {
     flexDirection: 'row',
@@ -152,8 +158,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   checkbox: {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
     borderRadius: 6,
     borderWidth: 2,
     alignItems: 'center',
@@ -161,7 +167,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   title: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   desc: {
@@ -189,4 +195,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TodoItem;
+export default TaskCard;

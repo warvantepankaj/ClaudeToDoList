@@ -10,26 +10,29 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
+import Header from '../components/Header';
+import FilterBar from '../components/FilterBar';
+import TaskCard from '../components/TaskCard';
 import { deleteTodo, listTodos, updateTodo } from '../api/todos';
 import { extractErrorMessage } from '../api/client';
 import { cancelTodoReminder } from '../utils/notifications';
-import AnalyticsCard from '../components/AnalyticsCard';
-import FilterBar from '../components/FilterBar';
-import TodoItem from '../components/TodoItem';
+import { useTheme } from '../context/ThemeContext';
 import type { Todo, TodoListParams, TodoPriority, TodoStatus } from '../api/types';
-import type { AppStackParamList } from '../navigation/RootNavigator';
+import type { AppStackParamList, MainTabParamList } from '../navigation/RootNavigator';
 
-type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'Tasks'>,
+  NativeStackScreenProps<AppStackParamList>
+>;
 
 type SortKey = NonNullable<TodoListParams['sort']>;
 
-const HomeScreen: React.FC<Props> = ({ navigation }) => {
-  const { user, logout } = useAuth();
-  const { colors, name: themeName, toggle } = useTheme();
+const TaskListScreen: React.FC<Props> = ({ navigation }) => {
+  const { colors } = useTheme();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,7 +59,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
       const data = await listTodos(params);
       setTodos(data);
     } catch (err) {
-      setError(extractErrorMessage(err, 'Could not load todos'));
+      setError(extractErrorMessage(err, 'Could not load tasks'));
     }
   }, [params]);
 
@@ -87,16 +90,14 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleToggleStatus = useCallback(
     async (todo: Todo, next: TodoStatus) => {
-      const optimistic = todos.map((t) => (t.id === todo.id ? { ...t, status: next } : t));
-      setTodos(optimistic);
+      const before = todos;
+      setTodos(todos.map((t) => (t.id === todo.id ? { ...t, status: next } : t)));
       try {
         const updated = await updateTodo(todo.id, { status: next });
         setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-        if (next === 'completed') {
-          await cancelTodoReminder(todo.id);
-        }
+        if (next === 'completed') await cancelTodoReminder(todo.id);
       } catch (err) {
-        setTodos(todos);
+        setTodos(before);
         Alert.alert('Update failed', extractErrorMessage(err));
       }
     },
@@ -105,7 +106,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleDelete = useCallback(
     (todo: Todo) => {
-      Alert.alert('Delete todo', `Remove "${todo.title}"?`, [
+      Alert.alert('Delete task', `Remove "${todo.title}"?`, [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
@@ -127,28 +128,13 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     [todos],
   );
 
-  const headerRight = (
-    <View style={styles.headerActions}>
-      <Pressable onPress={toggle} style={[styles.iconBtn, { backgroundColor: colors.surfaceMuted }]}>
-        <Text style={{ fontSize: 16 }}>{themeName === 'dark' ? '☀' : '☾'}</Text>
-      </Pressable>
-      <Pressable onPress={logout} style={[styles.iconBtn, { backgroundColor: colors.surfaceMuted }]}>
-        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Logout</Text>
-      </Pressable>
-    </View>
-  );
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.greeting, { color: colors.textMuted }]}>Hello,</Text>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-            {user?.name ?? 'there'}
-          </Text>
-        </View>
-        {headerRight}
-      </View>
+      <Header
+        title="Tasks"
+        subtitle={`${todos.length} total`}
+        actions={[{ label: '+ New', onPress: () => navigation.navigate('TodoForm', {}) }]}
+      />
 
       <FlatList
         data={todos}
@@ -159,7 +145,6 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         }
         ListHeaderComponent={
           <View>
-            <AnalyticsCard todos={todos} />
             <FilterBar
               search={search}
               onSearchChange={setSearch}
@@ -174,7 +159,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         }
         renderItem={({ item }) => (
-          <TodoItem
+          <TaskCard
             todo={item}
             onPress={() => navigation.navigate('TodoForm', { todo: item })}
             onToggleStatus={(next) => handleToggleStatus(item, next)}
@@ -186,9 +171,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
           ) : (
             <View style={styles.empty}>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No todos yet</Text>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No tasks yet</Text>
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                Tap the + button to create your first one.
+                Tap + New to create your first task.
               </Text>
             </View>
           )
@@ -209,32 +194,6 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  greeting: {
-    fontSize: 13,
-  },
-  name: {
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    minWidth: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   list: {
     paddingHorizontal: 16,
     paddingBottom: 96,
@@ -273,4 +232,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen;
+export default TaskListScreen;

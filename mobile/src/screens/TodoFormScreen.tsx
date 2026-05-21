@@ -17,6 +17,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { useTheme } from '../context/ThemeContext';
 import { createTodo, updateTodo } from '../api/todos';
+import { parseTaskAI } from '../api/ai';
 import { extractErrorMessage } from '../api/client';
 import { cancelTodoReminder, scheduleTodoReminder } from '../utils/notifications';
 import type { TodoPriority, TodoStatus } from '../api/types';
@@ -50,6 +51,39 @@ const TodoFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [aiInput, setAiInput] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiInfo, setAiInfo] = useState<string | null>(null);
+  const [subtasks, setSubtasks] = useState<string[]>([]);
+
+  const onAIParse = async () => {
+    const text = aiInput.trim();
+    if (!text || aiLoading) return;
+    setAiLoading(true);
+    setError(null);
+    setAiInfo(null);
+    try {
+      const parsed = await parseTaskAI(text);
+      if (parsed.title) setTitle(parsed.title);
+      if (parsed.priority) setPriority(parsed.priority);
+      if (parsed.deadline) {
+        const d = new Date(parsed.deadline);
+        if (!Number.isNaN(d.getTime())) setDueDate(d);
+      }
+      if (parsed.subtasks?.length) {
+        setSubtasks(parsed.subtasks);
+        if (!description.trim()) {
+          setDescription(parsed.subtasks.map((s) => `• ${s}`).join('\n'));
+        }
+      }
+      setAiInfo(`Parsed${parsed.subtasks?.length ? ` · ${parsed.subtasks.length} subtasks` : ''}`);
+    } catch (err) {
+      setError(extractErrorMessage(err, 'AI parse failed'));
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const headerTitle = useMemo(() => (editing ? 'Edit todo' : 'New todo'), [editing]);
 
@@ -117,6 +151,61 @@ const TodoFormScreen: React.FC<Props> = ({ navigation, route }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          {!editing && (
+            <View
+              style={[
+                styles.aiBox,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <View style={styles.aiHeader}>
+                <Text style={[styles.aiTitle, { color: colors.text }]}>✦ AI assist</Text>
+                <Text style={[styles.aiHint, { color: colors.textMuted }]}>
+                  Describe it naturally
+                </Text>
+              </View>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.aiInput,
+                  {
+                    color: colors.text,
+                    backgroundColor: colors.inputBg,
+                    borderColor: colors.inputBorder,
+                  },
+                ]}
+                placeholder='e.g. "Prepare for Java interview next week"'
+                placeholderTextColor={colors.placeholder}
+                value={aiInput}
+                onChangeText={setAiInput}
+                multiline
+                editable={!aiLoading}
+              />
+              <Pressable
+                onPress={onAIParse}
+                disabled={aiLoading || !aiInput.trim()}
+                style={({ pressed }) => [
+                  styles.aiBtn,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: pressed || aiLoading || !aiInput.trim() ? 0.6 : 1,
+                  },
+                ]}
+              >
+                {aiLoading ? (
+                  <ActivityIndicator color={colors.primaryText} />
+                ) : (
+                  <Text style={{ color: colors.primaryText, fontWeight: '700' }}>
+                    Generate
+                  </Text>
+                )}
+              </Pressable>
+              {aiInfo && (
+                <Text style={[styles.aiInfo, { color: colors.success }]}>{aiInfo}</Text>
+              )}
+            </View>
+          )}
+
           <Text style={[styles.label, { color: colors.textMuted }]}>Title</Text>
           <TextInput
             style={[
@@ -255,6 +344,18 @@ const TodoFormScreen: React.FC<Props> = ({ navigation, route }) => {
             />
           )}
 
+          {subtasks.length > 0 && (
+            <View style={{ marginTop: 8 }}>
+              <Text style={[styles.label, { color: colors.textMuted }]}>Subtasks</Text>
+              {subtasks.map((s, i) => (
+                <View key={`${i}-${s}`} style={styles.subtaskRow}>
+                  <Text style={{ color: colors.primary, marginRight: 8 }}>•</Text>
+                  <Text style={{ color: colors.text, flex: 1 }}>{s}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
           {error && <Text style={[styles.error, { color: colors.danger }]}>{error}</Text>}
 
           <Pressable
@@ -342,6 +443,45 @@ const styles = StyleSheet.create({
   error: {
     marginTop: 16,
     fontSize: 14,
+  },
+  aiBox: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 4,
+  },
+  aiHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 10,
+  },
+  aiTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  aiHint: {
+    fontSize: 12,
+  },
+  aiInput: {
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  aiBtn: {
+    marginTop: 10,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  aiInfo: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  subtaskRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 4,
   },
 });
 

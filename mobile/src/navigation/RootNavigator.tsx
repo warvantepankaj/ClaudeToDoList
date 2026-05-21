@@ -1,11 +1,14 @@
 import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
-import HomeScreen from '../screens/HomeScreen';
+import DashboardScreen from '../screens/DashboardScreen';
+import TaskListScreen from '../screens/TaskListScreen';
+import AIChatScreen from '../screens/AIChatScreen';
 import TodoFormScreen from '../screens/TodoFormScreen';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -16,13 +19,20 @@ export type AuthStackParamList = {
   Register: undefined;
 };
 
+export type MainTabParamList = {
+  Dashboard: undefined;
+  Tasks: undefined;
+  AIChat: undefined;
+};
+
 export type AppStackParamList = {
-  Home: undefined;
+  MainTabs: { screen?: keyof MainTabParamList } | undefined;
   TodoForm: { todo?: Todo };
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const AppStack = createNativeStackNavigator<AppStackParamList>();
+const MainTabs = createBottomTabNavigator<MainTabParamList>();
 
 const AuthNavigator: React.FC = () => (
   <AuthStack.Navigator screenOptions={{ headerShown: false }}>
@@ -30,6 +40,41 @@ const AuthNavigator: React.FC = () => (
     <AuthStack.Screen name="Register" component={RegisterScreen} />
   </AuthStack.Navigator>
 );
+
+const tabLabel: Record<keyof MainTabParamList, { label: string; glyph: string }> = {
+  Dashboard: { label: 'Home', glyph: '◆' },
+  Tasks: { label: 'Tasks', glyph: '☰' },
+  AIChat: { label: 'AI', glyph: '✦' },
+};
+
+const TabsNavigator: React.FC = () => {
+  const { colors } = useTheme();
+  return (
+    <MainTabs.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          height: 64,
+          paddingTop: 6,
+          paddingBottom: 8,
+        },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarIcon: ({ color }) => (
+          <Text style={{ color, fontSize: 18 }}>{tabLabel[route.name].glyph}</Text>
+        ),
+        tabBarLabel: tabLabel[route.name].label,
+      })}
+    >
+      <MainTabs.Screen name="Dashboard" component={DashboardScreen} />
+      <MainTabs.Screen name="Tasks" component={TaskListScreen} />
+      <MainTabs.Screen name="AIChat" component={AIChatScreen} />
+    </MainTabs.Navigator>
+  );
+};
 
 const AppNavigator: React.FC = () => {
   const { colors } = useTheme();
@@ -43,11 +88,15 @@ const AppNavigator: React.FC = () => {
       }}
     >
       <AppStack.Screen
-        name="Home"
-        component={HomeScreen}
+        name="MainTabs"
+        component={TabsNavigator}
         options={{ headerShown: false }}
       />
-      <AppStack.Screen name="TodoForm" component={TodoFormScreen} options={{ title: 'Todo' }} />
+      <AppStack.Screen
+        name="TodoForm"
+        component={TodoFormScreen}
+        options={{ title: 'Task', presentation: 'modal' }}
+      />
     </AppStack.Navigator>
   );
 };
@@ -59,7 +108,7 @@ const RootNavigator: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator color={colors.primary} />
       </View>
     );
@@ -83,5 +132,13 @@ const RootNavigator: React.FC = () => {
     </NavigationContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
 
 export default RootNavigator;
