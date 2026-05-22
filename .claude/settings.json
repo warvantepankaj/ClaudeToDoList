@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git add:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(npx expo:*)",
+      "Bash(pip install:*)",
+      "Bash(python -m:*)",
+      "Bash(uvicorn:*)",
+      "Bash(eas build:*)",
+      "Bash(eas update:*)",
+      "Bash(eas submit:*)",
+      "Bash(eas env:*)",
+      "Bash(vercel:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "PowerShell(git status:*)",
+      "PowerShell(git diff:*)",
+      "PowerShell(git log:*)",
+      "PowerShell(git branch:*)",
+      "PowerShell(git show:*)",
+      "PowerShell(git add:*)",
+      "PowerShell(npm install:*)",
+      "PowerShell(npm run:*)",
+      "PowerShell(npx expo:*)",
+      "PowerShell(pip install:*)",
+      "PowerShell(eas build:*)",
+      "PowerShell(eas update:*)",
+      "PowerShell(eas submit:*)",
+      "PowerShell(eas env:*)",
+      "PowerShell(vercel:*)",
+      "PowerShell(Get-ChildItem:*)",
+      "PowerShell(Get-Content:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf:*)",
+      "PowerShell(Remove-Item -Recurse -Force:*)",
+      "PowerShell(git push --force:*)"
+    ]
+  }
+}
