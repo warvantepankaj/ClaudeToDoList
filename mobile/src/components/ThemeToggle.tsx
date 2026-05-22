@@ -51,7 +51,7 @@ const Segment: React.FC<{
   <View
     style={[
       styles.segment,
-      active && { backgroundColor: primary },
+      { backgroundColor: active ? primary : 'transparent' },
     ]}
   >
     <Text
@@ -75,12 +75,19 @@ const styles = StyleSheet.create({
     padding: 3,
     gap: 2,
   },
+  // borderRadius is half the size (pill). Android sometimes fails to re-clip
+  // the background when borderRadius is much larger than the bounds AND the
+  // background color toggles between set/unset across renders, so we (a) use
+  // an actual half-size radius and (b) always declare backgroundColor so the
+  // style diff is always a value change, never an insert/remove.
   segment: {
     width: 30,
     height: 30,
-    borderRadius: 999,
+    borderRadius: 15,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
 });
 

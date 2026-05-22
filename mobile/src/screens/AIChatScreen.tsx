@@ -57,6 +57,34 @@ const toDeadlineISO = (timeHHMM: string): string | null => {
   return d.toISOString();
 };
 
+// The AI emits naive ISO strings (e.g. "2026-05-22T22:00:00") meaning the
+// user's local wall-clock time. Sending those straight to the API stores
+// them as UTC, which shifts the time by the user's offset on read. Convert
+// to a proper UTC ISO by parsing components explicitly — Hermes is not
+// consistent about treating no-offset ISOs as local time, so we don't rely
+// on `new Date(string)` to do it.
+const NAIVE_ISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/;
+const normalizeDeadlineToUTC = (s?: string | null): string | null => {
+  if (!s) return null;
+  // Already has a timezone (Z or ±HH:MM) — trust it.
+  if (/Z$|[+-]\d{2}:?\d{2}$/.test(s)) {
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  const m = NAIVE_ISO.exec(s);
+  if (!m) return null;
+  const local = new Date(
+    parseInt(m[1], 10),
+    parseInt(m[2], 10) - 1,
+    parseInt(m[3], 10),
+    parseInt(m[4], 10),
+    parseInt(m[5], 10),
+    parseInt(m[6] ?? '0', 10),
+    0,
+  );
+  return Number.isNaN(local.getTime()) ? null : local.toISOString();
+};
+
 // Floating tab bar height (capsule + its safe-area padding). Used to keep
 // content visually above it.
 const TAB_BAR_CLEARANCE = 76;
@@ -156,7 +184,7 @@ const AIChatScreen: React.FC<Props> = () => {
           await createTodo({
             title: t.title,
             priority: t.priority,
-            due_date: t.deadline || null,
+            due_date: normalizeDeadlineToUTC(t.deadline),
             recurrence: t.recurrence || null,
           });
         }
@@ -363,8 +391,7 @@ const AIChatScreen: React.FC<Props> = () => {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <FlatList
           ref={listRef}

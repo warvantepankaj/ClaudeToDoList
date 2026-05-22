@@ -4,6 +4,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.deps import get_current_user
 from app.db.mongo import get_db
 from app.schemas.todo import (
+    RepairTimezonePayload,
     TodoCreate,
     TodoOut,
     TodoPriority,
@@ -15,6 +16,7 @@ from app.services.todo_service import (
     delete_todo,
     get_todo,
     list_todos,
+    repair_timezone,
     uncomplete_todo,
     update_todo,
 )
@@ -85,3 +87,18 @@ async def uncomplete_user_todo(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ) -> TodoOut:
     return await uncomplete_todo(db, user_id=current_user["_id"], todo_id=todo_id)
+
+
+@router.post("/{todo_id}/repair-timezone", response_model=TodoOut)
+async def repair_user_todo_timezone(
+    todo_id: str,
+    payload: RepairTimezonePayload,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> TodoOut:
+    return await repair_timezone(
+        db,
+        user_id=current_user["_id"],
+        todo_id=todo_id,
+        offset_minutes=payload.offset_minutes,
+    )

@@ -196,6 +196,40 @@ async def delete_todo(db: AsyncIOMotorDatabase, user_id: ObjectId, todo_id: str)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Todo not found")
 
 
+async def repair_timezone(
+    db: AsyncIOMotorDatabase,
+    user_id: ObjectId,
+    todo_id: str,
+    offset_minutes: int,
+) -> TodoOut:
+    """One-shot fix for tasks created via AI Chat before the local→UTC
+    conversion fix shipped: their local wall-clock time was saved as if it
+    were UTC, shifting them forward by the user's offset. Subtract that
+    offset from due_date and last_completed_at to restore the intended
+    instant."""
+    oid = _parse_oid(todo_id)
+    doc = await db.todos.find_one({"_id": oid, "user_id": user_id})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Todo not found")
+    shift = timedelta(minutes=offset_minutes)
+    update: dict = {}
+    if isinstance(doc.get("due_date"), datetime):
+        update["due_date"] = doc["due_date"] - shift
+    if isinstance(doc.get("last_completed_at"), datetime):
+        update["last_completed_at"] = doc["last_completed_at"] - shift
+    if not update:
+        return _to_out(doc)
+    update["updated_at"] = datetime.now(timezone.utc)
+    updated = await db.todos.find_one_and_update(
+        {"_id": oid, "user_id": user_id},
+        {"$set": update},
+        return_document=ReturnDocument.AFTER,
+    )
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Todo not found")
+    return _to_out(updated)
+
+
 async def uncomplete_todo(
     db: AsyncIOMotorDatabase, user_id: ObjectId, todo_id: str
 ) -> TodoOut:

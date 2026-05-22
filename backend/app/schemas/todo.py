@@ -52,3 +52,9 @@ class TodoOut(BaseModel):
     last_completed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class RepairTimezonePayload(BaseModel):
+    # Minutes east of UTC. For IST (+5:30) pass 330. We subtract this from
+    # the stored due_date / last_completed_at to undo "local-saved-as-UTC".
+    offset_minutes: int = Field(ge=-840, le=840)

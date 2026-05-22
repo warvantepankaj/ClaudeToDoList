@@ -1,16 +1,21 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '../context/ThemeContext';
+import { getDisplayTask } from '../utils/recurringDisplay';
 import type { Todo } from '../api/types';
 
 type Props = { todos: Todo[] };
 
 const AnalyticsCard: React.FC<Props> = ({ todos }) => {
   const { colors } = useTheme();
-  const total = todos.length;
-  const completed = todos.filter((t) => t.status === 'completed').length;
-  const inProgress = todos.filter((t) => t.status === 'in_progress').length;
+  // Recurring tasks are bumped back to "pending" on completion, so the raw
+  // status field hides today's check-offs. Resolve the per-task effective
+  // status (same rule used on Dashboard/Tasks) before tallying.
+  const effective = useMemo(() => todos.map(getDisplayTask), [todos]);
+  const total = effective.length;
+  const completed = effective.filter((t) => t.status === 'completed').length;
+  const inProgress = effective.filter((t) => t.status === 'in_progress').length;
   const pending = total - completed - inProgress;
   const pct = total === 0 ? 0 : Math.round((completed / total) * 100);
 
